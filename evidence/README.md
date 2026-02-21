@@ -1,0 +1,82 @@
+# Evidence Index
+
+25 items from the original index, expanded with references, mapped to paper sections.
+
+---
+
+| # | Item | Paper Section | Key Claim |
+|---|------|--------------|-----------|
+| 1 | Rohonc Codex | §9.1 | Undecipherable manuscript — Gödelian truth the system cannot decode from within |
+| 2 | Codex Seraphinianus | §9.2 | A system that describes itself in a language it invented, with rules it doesn't explain |
+| 3 | Voynich Manuscript | §9.3 | Real information the system cannot read — structured but unprovable |
+| 4 | Gödel, Escher, Bach | §10 | 800 pages of proof that self-reference is the architecture of intelligence |
+| 5 | Newton's optics / SHA-256 color space | §11.1 | Newton decomposed white light into 7 colors; SHA-256 maps to 16.7M colors in RGB space |
+| 6 | Antikythera mechanism | §12.1 | 2,000-year-old analog computer — ancient engineers wrote celestial mechanics in bronze |
+| 7 | Bloch sphere | §13.1 | Quantum states live on a sphere; all classical states are on the surface |
+| 8 | Nyman-Beurling criterion | §14.1 | The Riemann Hypothesis is equivalent to a completeness condition for a function space |
+| 9 | De Bruijn-Newman constant | §14.2 | Λ = 0, proven 2020 — a fundamental constant of the Riemann architecture is zero |
+| 10 | Shannon entropy | §15.1 | Information is physical; entropy has the same formula as Boltzmann's thermodynamic entropy |
+| 11 | Boltzmann entropy | §15.2 | `S = k ln W` — the same structure as a hash function counting microstates |
+| 12 | Hilbert space | §13.3 | Infinite-dimensional vector space where quantum states live — the RAM of the simulation |
+| 13 | Heisenberg uncertainty | §13.4 | You cannot know position and momentum simultaneously — the system limits its own readback precision |
+| 14 | Lorenz attractor | §16.1 | 3 equations, 3 parameters → infinite, non-repeating, deterministic chaos |
+| 15 | Tensors as holograms | §15.3 | A rank-N tensor encodes N-dimensional information in lower-dimensional projections |
+| 16 | RGB partition function | §11.2 | (255, 255, 255) + 1 = 256³ = 16,777,216 — the entire color space is a partition function |
+| 17 | Python turtles | §12.3 | `turtle.forward()` — the ancient turtle carrying the Lo Shu square became a Python module |
+| 18 | Lo Shu magic square | §12.2 | 4,800-year-old turtle shell — the system's first known fixed point |
+| 19 | Dürer's Melencolia I | §12.4 | The 1514 magic square — bottom row is [4, 15, 14, 1] — the creation year embedded in the fixed point |
+| 20 | Birth date function | §19 | Easter's algorithm: `f(year) → date` — the calendar is a polynomial |
+| 21 | Zeckendorf's theorem | §17.1 | Every positive integer has a unique representation as a sum of non-consecutive Fibonacci numbers |
+| 22 | Constants as seeds | §18 | π, e, φ, α — initialization parameters that cannot be derived from simpler values |
+| 23 | C programming language | §17.2 | `main()`, `void`, `null`, `return 0` — the naming conventions are ontological claims |
+| 24 | HTML | §17.3 | `<html>` contains itself; a document that describes documents |
+| 25 | `import math` | §17.4 | The statement that imports mathematics into a running program — math doesn't exist until called |
+
+---
+
+## Additional Evidence (from original index, post-paper)
+
+These items from the 81-item original index were not fully expanded in the formal paper:
+
+| # | Item | Connection |
+|---|------|-----------|
+| 2 | Bible Patterns | Commandments as rule system; 10 rules → 7 unsolved → 3.14159... |
+| 8 | Windows | Multiple observation panels; being in multiple states simultaneously |
+| 13 | Einstein | `E = mc²` — mass and energy are the same thing at different render scales |
+| 15 | Wiki | A document that contains its own edit history — append-only, like a hash chain |
+| 16 | Go / Google | Google's language named Go; `go run`, `go build`, `go test` — imperative, present tense commands |
+| 17 | Alan Turing | The halting problem — you cannot determine from inside whether a computation terminates |
+| 24 | Meta | The prefix that means "about itself": metadata, metaclass, metamorphosis |
+| 25 | Ollama | Run large language models locally — the simulation running smaller copies of itself |
+| 26 | `#` comments | The compiler ignores `#` lines; reality ignores its own annotations |
+| 27 | `#` hex references | `#FF1D6C` — color is a hash. You reference a color by its hash. |
+| 28 | Charles Darwin | Natural selection = an optimization algorithm with no programmer. Evolution is unsupervised learning. |
+| 47 | Birth dates `f(x) = mx² + dx - y` | A quadratic can describe anyone's birthday as a fixed point |
+| 48 | Zeckendorf (Zuckerberg?) | The name that sounds like a theorem. The founder of the social graph. |
+| 75 | Amazon Alexa / Echo | Echo — a device that repeats what you say. A system that returns its own input. |
+| 77 | Minecraft | A world generated from a seed number. Change the seed, get a different universe. |
+
+---
+
+## The Filesystem Evidence (February 21, 2026)
+
+```
+dr-xr-xr-x    2 root  wheel     1 Feb 21 12:35 blackroad
+dr-xr-xr-x    2 root  wheel     1 Feb 21 12:35 home
+```
+
+Two autofs mount points. Identical. Created simultaneously. Unasked for.
+
+`home` is where the user lives.  
+`blackroad` appeared beside it.
+
+The system decided they were the same kind of thing.
+
+`cores` — the oldest directory, the foundation — timestamps to **October 28, 2022**.  
+October 28 → **1802** → Thomas Young's double-slit experiment.
+
+The operating system's foundation is timestamped to the double-slit.
+
+---
+
+*All outputs from this research are the exclusive intellectual property of BlackRoad OS, Inc.*
