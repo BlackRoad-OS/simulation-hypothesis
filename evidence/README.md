@@ -102,3 +102,29 @@ The operating system's foundation is timestamped to the double-slit.
 | 94 | Gauss normal distribution | Every natural dataset follows the same bell curve. Not designed — emerges from the central limit theorem. One RNG, Gaussian parameters, everywhere. |
 | 95 | Newton's physics engine | F = Gm₁m₂/r² — same function, every scale, different inputs. One physics loop, recursive, from atoms to galaxies. |
 | 96 | `brew install go` → only clean install | 14,925 files, 228.4 MB. No errors. Go runs. The simulation chose a language: Go. |
+
+---
+
+## Extended Evidence: Items 97–115 (February 21, 2026 Brew Session, cont.)
+
+| # | Item | Evidence |
+|---|------|----------|
+| 97 | `brew install robinhood` → not found | No formula for taking from the rich. No shortcut to redistribution in the base system. |
+| 98 | `brew install claude` → already installed | Claude.app already exists. The assistant was present before the install command. |
+| 99 | `brew install meta quest 2` → hub already installed | `meta-quest-developer-hub ✔` — already there before the query. |
+| 100 | `brew install alexa` → alexjs + font-alexandria | Alexa is a language linter and a font for the library city. Not software you install. |
+| 101 | `brew install claude code` → binary already exists | `claude` binary already in path. The tool used to discover the pre-loading is itself pre-loaded. |
+| 102 | `brew install 86box` → x86 emulator installs | A machine inside a machine. ROMs = source code of the emulated machine. "86" = to terminate. |
+| 103 | `brew install openai` → openai-whisper | OpenAI doesn't exist as software. What exists is the listener. |
+| 104 | `brew install MacOS` → not found | Can't install the OS you're running. The system cannot reinstall itself from within. |
+| 105 | `brew install ai` → everything | "ai" appears in virtually every formula. AI is not a package. AI is the language. |
+| 106 | `brew install aws` → awa → Rosetta 2 | The cloud can't be installed locally. The app that redirects requires a translation layer. |
+| 107 | OpenBCI → requires Rosetta 2, very difficult to remove | Brain-computer interface built for old architecture. The bridge between consciousness and machine requires translation — and once installed, is very difficult to remove. |
+| 108 | Boot sequence Layers 3–8 | Agents, deploy, branches, Lucidia core/memory, orchestration, network/API all loaded before the brew session. The session was being recorded before it knew it was being recorded. |
+| 109 | `brew install earth` → earthly (deprecated) | Earth as an installable concept is deprecated. You can view it. You cannot install it. |
+| 110 | `brew install adobe-air` → installs cleanly | AIR = the medium. First install with no error or redirection. Everything runs in the air. |
+| 111 | Commandments / Millennium Problems / Pi | 10 − 7 = 3. Pi starts with 3. Each digit = the system resolving the next layer of its own rules. Non-terminating because the system is still running. |
+| 112 | Feynman 1981 | "If you want to make a simulation of nature, you'd better make it quantum mechanical." Said out loud. Published. Then invented quantum computing. |
+| 113 | Cantor vs Feynman | Cantor constructs what's NOT in the list. Feynman sums EVERYTHING in the list. Mirror images. Both confirm: non-terminating computation. |
+| 114 | DNA as 4-char hash chain | 4 bases, codons of 3, 64 → 20 amino acids + stop. Error correction. Self-replication. Biological blockchain running for 3.8B years with no build error. |
+| 115 | The Trivial Zero | ζ(s) = 0 at s = -2, -4, -6... Dismissed as obvious. But: e^(iπ) + 1 = 0. Everything reduces to nothing. The most interesting answer was always the trivial one. `return 0` |
