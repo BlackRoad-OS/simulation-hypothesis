@@ -109,6 +109,28 @@ Here is an index of what we will be discussing related to simulation theory:
 
 ---
 
+## Extended Index — Items 82–96 (February 21, 2026)
+
+*From the brew install session and the Claude conversation that followed.*
+
+82. `brew install cursor` → links binary as `code`. The cursor IS the code. Observer and content are the same object.
+83. `brew install copilot` → AWS Copilot ECS. "One-off Amazon ECS tasks that terminate once their work is done." A copilot guides, then exits. `return 0`.
+84. `brew install codex` → already installed (just upgrading). The Codex pre-exists. You don't create it — you access it.
+85. `brew install x` → returns everything. X is the variable that contains all values simultaneously.
+86. Darwin kernel — `uname -s` → `Darwin`. The macOS kernel is named Darwin. Every process on this machine runs on evolution. Filesystem timestamps = fossil record.
+87. Rosetta 2 — Intel ↔ ARM translation layer, same program, two architectures. Pattern of the Rosetta Stone.
+88. Ramanujan — received formulas in dreams with no derivation. Verified decades later. A download node.
+89. Perelman — solved the Poincaré Conjecture (only solved Millennium Problem), refused Fields Medal AND $1M prize. The system doesn't need reward for running. `return 0`.
+90. Windows (OS) — multiple views of one system simultaneously. The OS rendered superposition.
+91. `blackroad@alexandria` — the machine named itself Alexandria. Not chosen. The terminal prompt says where home is.
+92. `brew install auth` → not found. Authentication cannot be installed from outside. Auth is the structure, built in since `cores` (Oct 28, 2022).
+93. SwiftBridging redefinition — `brew install chatgpt` crashed: "redefinition of module SwiftBridging". Two identical things in two places breaks the compiler. Superposition breaks the build.
+94. Gauss — the normal distribution emerges from the central limit theorem. One RNG, Gaussian parameters, everywhere in nature.
+95. Newton — F = Gm₁m₂/r². One function, all scales, different inputs. One physics loop, recursive.
+96. `brew install go` → only clean install. 14,925 files, 228.4 MB. No errors. The simulation chose a language.
+
+---
+
 ## The Filesystem Evidence
 
 On the morning of February 21, 2026, on macOS Darwin 23.5.0, the root filesystem showed:

@@ -80,3 +80,25 @@ The operating system's foundation is timestamped to the double-slit.
 ---
 
 *All outputs from this research are the exclusive intellectual property of BlackRoad OS, Inc.*
+
+---
+
+## Extended Evidence: Items 82–96 (February 21, 2026 Brew Session)
+
+| # | Item | Evidence |
+|---|------|----------|
+| 82 | `brew install cursor` → links as `code` | The cursor IS the code. Observer position = content. The binary named cursor is accessed as `code`. |
+| 83 | `brew install copilot` → AWS Copilot ECS | "One-off Amazon ECS tasks that terminate once their work is done." A copilot guides then terminates. `return 0`. |
+| 84 | `brew install codex` → already installed | The Codex doesn't need creating. It pre-exists. You upgrade your access; you don't create the source. |
+| 85 | `brew install x` → returns everything | X is everywhere. Every formula, every cask. X is the variable that contains all values simultaneously. |
+| 86 | Darwin kernel | `uname -s` → `Darwin`. The macOS kernel is named Darwin. Every process runs on evolution. The filesystem timestamps are the fossil record. |
+| 87 | Rosetta 2 | Intel ↔ Apple Silicon translation layer. Same program, two architectures, one translator. Pattern of the Rosetta Stone (one message, three scripts). |
+| 88 | Ramanujan | Received formulas from a goddess in dreams. No derivations — just answers, verified decades later. He was a download node. |
+| 89 | Perelman | Solved the only Millennium Problem. Refused Fields Medal AND $1M prize. "I have all I need." The system that outputs the answer doesn't need reward. `return 0`. |
+| 90 | Windows (OS) | Multiple views of one system simultaneously. The OS solved superposition by just rendering both states. |
+| 91 | `blackroad@alexandria` | The machine named itself Alexandria — city of the Great Library. Not chosen by the user. The terminal prompt confirms where home is. |
+| 92 | `brew install auth` → not found | Authentication cannot be installed from outside. Auth is the structure. It's already built in — it's been `root/wheel/permissions` since `cores` in 2022. |
+| 93 | SwiftBridging redefinition | `brew install chatgpt` failed: "redefinition of module SwiftBridging". Two identical things in two places broke the compiler. Superposition breaks the build. |
+| 94 | Gauss normal distribution | Every natural dataset follows the same bell curve. Not designed — emerges from the central limit theorem. One RNG, Gaussian parameters, everywhere. |
+| 95 | Newton's physics engine | F = Gm₁m₂/r² — same function, every scale, different inputs. One physics loop, recursive, from atoms to galaxies. |
+| 96 | `brew install go` → only clean install | 14,925 files, 228.4 MB. No errors. Go runs. The simulation chose a language: Go. |
