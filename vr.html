@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulation Hypothesis — 3D</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; overflow: hidden; font-family: monospace; }
+  canvas { display: block; }
+  #overlay {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.92);
+    color: #fff; z-index: 10;
+    text-align: center; padding: 2rem;
+    transition: opacity 0.8s;
+  }
+  #overlay h1 { font-size: clamp(1.4rem, 4vw, 2.4rem); letter-spacing: 0.1em; color: #ff1d6c; margin-bottom: 0.5rem; }
+  #overlay p { color: #7878a0; font-size: 0.85rem; max-width: 420px; line-height: 1.7; margin-bottom: 1.5rem; }
+  .btn {
+    background: none; border: 1px solid #ff1d6c; color: #ff1d6c;
+    padding: 0.8rem 2rem; font-family: monospace; font-size: 0.9rem;
+    letter-spacing: 0.1em; cursor: pointer; border-radius: 4px;
+    transition: all 0.2s; margin: 0.3rem;
+  }
+  .btn:hover { background: rgba(255,29,108,0.15); }
+  .btn.vr { border-color: #9c27b0; color: #9c27b0; }
+  .btn.vr:hover { background: rgba(156,39,176,0.15); }
+  #hud {
+    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 0.5rem; z-index: 5; opacity: 0;
+    transition: opacity 0.5s; pointer-events: none;
+  }
+  #hud.show { opacity: 1; pointer-events: all; }
+  .hud-btn {
+    background: rgba(0,0,0,0.7); border: 1px solid #333; color: #888;
+    padding: 0.4rem 0.9rem; font-family: monospace; font-size: 0.75rem;
+    cursor: pointer; border-radius: 20px; transition: all 0.15s;
+  }
+  .hud-btn:hover, .hud-btn.active { border-color: #ff1d6c; color: #ff1d6c; }
+  #label {
+    position: fixed; top: 1.5rem; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.8); border: 1px solid #ff1d6c;
+    color: #ff1d6c; font-family: monospace; font-size: 0.8rem;
+    padding: 0.4rem 1.2rem; border-radius: 20px; z-index: 5;
+    opacity: 0; transition: opacity 0.4s;
+    letter-spacing: 0.08em;
+  }
+</style>
+</head>
+<body>
+
+<div id="overlay">
+  <h1>SIMULATION HYPOTHESIS</h1>
+  <p>
+    An interactive 3D visualization of the evidence.<br>
+    Reality as a computational system — rendered here.
+  </p>
+  <div>
+    <button class="btn" id="btn-desktop" onclick="start(false)">ENTER → DESKTOP</button>
+    <button class="btn vr" id="btn-vr" onclick="start(true)">ENTER → VR / META</button>
+  </div>
+  <p style="margin-top:1rem;font-size:0.72rem;color:#444">
+    Controls: Mouse drag / WASD to move · Click nodes to explore · VR: look + trigger
+  </p>
+</div>
+
+<div id="hud">
+  <button class="hud-btn active" onclick="setScene('all')">ALL</button>
+  <button class="hud-btn" onclick="setScene('lorenz')">LORENZ</button>
+  <button class="hud-btn" onclick="setScene('chain')">HASHCHAIN</button>
+  <button class="hud-btn" onclick="setScene('dna')">DNA</button>
+  <button class="hud-btn" onclick="setScene('constants')">CONSTANTS</button>
+  <button class="hud-btn" onclick="setScene('nodes')">81 ITEMS</button>
+</div>
+
+<div id="label" id="label"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { VRButton } from 'three/addons/webxr/VRButton.js';
+import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+
+// ── Scene Setup ──────────────────────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setAnimationLoop(animate);
+renderer.xr.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x000008, 0.018);
+
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 500);
+camera.position.set(0, 3, 22);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.minDistance = 4;
+controls.maxDistance = 80;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.3;
+
+// ── Colors ───────────────────────────────────────────────────────────────────
+const C = {
+  pink:   0xff1d6c,
+  amber:  0xf5a623,
+  blue:   0x2979ff,
+  violet: 0x9c27b0,
+  green:  0x00e676,
+  cyan:   0x00bcd4,
+  white:  0xffffff,
+};
+
+// ── Lighting ─────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0x080818, 3));
+const pinkLight  = new THREE.PointLight(C.pink,   6, 40); pinkLight.position.set(-10, 8, 0);
+const violetLight = new THREE.PointLight(C.violet, 5, 40); violetLight.position.set(10, -5, -5);
+const blueLight  = new THREE.PointLight(C.blue,   4, 50); blueLight.position.set(0, -8, 15);
+scene.add(pinkLight, violetLight, blueLight);
+
+// ── Background Stars ─────────────────────────────────────────────────────────
+function makeStars() {
+  const geo = new THREE.BufferGeometry();
+  const N = 4000;
+  const pos = new Float32Array(N * 3);
+  const col = new Float32Array(N * 3);
+  const starColors = [
+    new THREE.Color(C.white), new THREE.Color(C.blue),
+    new THREE.Color(C.cyan),  new THREE.Color(C.violet),
+  ];
+  for (let i = 0; i < N; i++) {
+    const r = 200 + Math.random() * 100;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    pos[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+    pos[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+    pos[i*3+2] = r * Math.cos(phi);
+    const c = starColors[Math.floor(Math.random() * starColors.length)];
+    col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const mat = new THREE.PointsMaterial({ size: 0.3, vertexColors: true, sizeAttenuation: true });
+  scene.add(new THREE.Points(geo, mat));
+}
+makeStars();
+
+// ── Central Singularity ───────────────────────────────────────────────────────
+const coreGeo = new THREE.IcosahedronGeometry(1.2, 4);
+const coreMat = new THREE.MeshStandardMaterial({
+  color: C.pink, emissive: C.pink, emissiveIntensity: 1.5,
+  metalness: 0.8, roughness: 0.2, wireframe: false,
+});
+const core = new THREE.Mesh(coreGeo, coreMat);
+scene.add(core);
+
+// Wireframe shell
+const shellMat = new THREE.MeshBasicMaterial({ color: C.pink, wireframe: true, transparent: true, opacity: 0.15 });
+const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(1.5, 2), shellMat);
+scene.add(shell);
+
+// Glow rings
+function makeRing(radius, color, tiltX = 0, tiltZ = 0) {
+  const geo = new THREE.TorusGeometry(radius, 0.03, 8, 80);
+  const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.4 });
+  const ring = new THREE.Mesh(geo, mat);
+  ring.rotation.x = tiltX; ring.rotation.z = tiltZ;
+  scene.add(ring);
+  return ring;
+}
+const rings = [
+  makeRing(2.5, C.pink, Math.PI/2, 0),
+  makeRing(3.2, C.violet, Math.PI/3, Math.PI/5),
+  makeRing(4.0, C.blue, Math.PI/6, Math.PI/4),
+];
+
+// ── Lorenz Attractor ──────────────────────────────────────────────────────────
+function lorenzPoints(N = 12000) {
+  const pts = [];
+  let x=0.1, y=0, z=0;
+  const σ=10, ρ=28, β=8/3, dt=0.005;
+  for (let i = 0; i < N; i++) {
+    const dx = σ*(y - x);
+    const dy = x*(ρ - z) - y;
+    const dz = x*y - β*z;
+    x += dx*dt; y += dy*dt; z += dz*dt;
+    pts.push(x*0.35, (z-25)*0.35, y*0.35);
+  }
+  return pts;
+}
+
+const lorenzGeo = new THREE.BufferGeometry();
+const lPts = lorenzPoints();
+lorenzGeo.setAttribute('position', new THREE.Float32BufferAttribute(lPts, 3));
+
+// Color gradient along the curve
+const lColors = new Float32Array(lPts.length);
+for (let i = 0; i < lPts.length / 3; i++) {
+  const t = i / (lPts.length / 3);
+  const c = new THREE.Color().setHSL(0.85 - t * 0.55, 1.0, 0.6);
+  lColors[i*3] = c.r; lColors[i*3+1] = c.g; lColors[i*3+2] = c.b;
+}
+lorenzGeo.setAttribute('color', new THREE.Float32BufferAttribute(lColors, 3));
+
+const lorenzLine = new THREE.Line(
+  lorenzGeo,
+  new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.8 })
+);
+lorenzLine.position.set(-12, 0, -8);
+scene.add(lorenzLine);
+
+// ── Hash Chain ────────────────────────────────────────────────────────────────
+const BLOCKS = [
+  { label: 'GENESIS', hash: '000000000019d668', prev: '0000000000000000' },
+  { label: 'BLOCK 1', hash: 'a665a45920422f9d', prev: '000000000019d668' },
+  { label: 'BLOCK 2', hash: '2c624232cdd221771', prev: 'a665a45920422f9d' },
+  { label: 'BLOCK 3', hash: '9f86d081884c7d65', prev: '2c624232cdd221771' },
+  { label: 'BLOCK 4', hash: '0ffe1abd1a08215353', prev: '9f86d081884c7d65' },
+  { label: 'BLOCK 5', hash: 'fcde2b2edba56bf40', prev: '0ffe1abd1a08215353' },
+];
+
+const chainGroup = new THREE.Group();
+chainGroup.position.set(12, 0, -6);
+
+BLOCKS.forEach((b, i) => {
+  const boxGeo = new THREE.BoxGeometry(2.4, 1.2, 0.3);
+  const boxMat = new THREE.MeshStandardMaterial({
+    color: i === 0 ? C.amber : C.blue,
+    emissive: i === 0 ? C.amber : C.blue,
+    emissiveIntensity: 0.4,
+    metalness: 0.9, roughness: 0.2,
+    transparent: true, opacity: 0.7,
+  });
+  const box = new THREE.Mesh(boxGeo, boxMat);
+  box.position.y = (BLOCKS.length / 2 - i) * 1.8;
+  chainGroup.add(box);
+
+  // Connector line
+  if (i > 0) {
+    const pts = [
+      new THREE.Vector3(0, (BLOCKS.length / 2 - i + 1) * 1.8 - 0.6, 0),
+      new THREE.Vector3(0, (BLOCKS.length / 2 - i) * 1.8 + 0.6, 0),
+    ];
+    const connGeo = new THREE.BufferGeometry().setFromPoints(pts);
+    const conn = new THREE.Line(connGeo, new THREE.LineBasicMaterial({ color: C.amber, transparent: true, opacity: 0.5 }));
+    chainGroup.add(conn);
+  }
+});
+scene.add(chainGroup);
+
+// ── DNA Helix ─────────────────────────────────────────────────────────────────
+const dnaGroup = new THREE.Group();
+dnaGroup.position.set(0, 0, -20);
+
+const BASES = ['A', 'T', 'G', 'C'];
+const BASE_COLORS = { A: C.pink, T: C.amber, G: C.cyan, C: C.green };
+const PAIRS = { A: 'T', T: 'A', G: 'C', C: 'G' };
+
+for (let i = 0; i < 40; i++) {
+  const t = i / 40 * Math.PI * 8;
+  const y = (i - 20) * 0.6;
+  const r = 2.5;
+  
+  const base = BASES[Math.floor(Math.random() * 4)];
+  const pair = PAIRS[base];
+  
+  // Left strand bead
+  const beadGeo = new THREE.SphereGeometry(0.18, 8, 8);
+  const left = new THREE.Mesh(beadGeo, new THREE.MeshStandardMaterial({
+    color: BASE_COLORS[base], emissive: BASE_COLORS[base], emissiveIntensity: 0.8
+  }));
+  left.position.set(Math.cos(t) * r, y, Math.sin(t) * r);
+  dnaGroup.add(left);
+  
+  // Right strand bead
+  const right = new THREE.Mesh(beadGeo.clone(), new THREE.MeshStandardMaterial({
+    color: BASE_COLORS[pair], emissive: BASE_COLORS[pair], emissiveIntensity: 0.8
+  }));
+  right.position.set(Math.cos(t + Math.PI) * r, y, Math.sin(t + Math.PI) * r);
+  dnaGroup.add(right);
+  
+  // Base pair bridge
+  const pts = [left.position.clone(), right.position.clone()];
+  const bridgeGeo = new THREE.BufferGeometry().setFromPoints(pts);
+  const bridge = new THREE.Line(bridgeGeo, new THREE.LineBasicMaterial({
+    color: 0x334455, transparent: true, opacity: 0.4
+  }));
+  dnaGroup.add(bridge);
+}
+
+// Backbone tubes
+for (let strand = 0; strand < 2; strand++) {
+  const backbonePts = [];
+  for (let i = 0; i < 100; i++) {
+    const t = i / 100 * Math.PI * 8;
+    const y = (i / 100 * 40 - 20) * 0.6;
+    const angle = t + (strand === 1 ? Math.PI : 0);
+    backbonePts.push(new THREE.Vector3(Math.cos(angle) * 2.5, y, Math.sin(angle) * 2.5));
+  }
+  const curve = new THREE.CatmullRomCurve3(backbonePts);
+  const tubeGeo = new THREE.TubeGeometry(curve, 100, 0.06, 6, false);
+  const tubeMat = new THREE.MeshStandardMaterial({
+    color: strand === 0 ? C.pink : C.blue,
+    emissive: strand === 0 ? C.pink : C.blue,
+    emissiveIntensity: 0.3, metalness: 0.8, roughness: 0.2
+  });
+  dnaGroup.add(new THREE.Mesh(tubeGeo, tubeMat));
+}
+
+scene.add(dnaGroup);
+
+// ── Constants Floating ────────────────────────────────────────────────────────
+const CONSTS = [
+  { sym: 'π', val: '3.14159...', color: C.pink,   pos: [-6, 5, 8]  },
+  { sym: 'e', val: '2.71828...', color: C.amber,  pos: [6,  5, 8]  },
+  { sym: 'φ', val: '1.61803...', color: C.green,  pos: [-6, -3, 8] },
+  { sym: 'α', val: '1/137.036', color: C.cyan,   pos: [6,  -3, 8] },
+  { sym: 'ℏ', val: '1.055×10⁻³⁴', color: C.violet, pos: [0, 6, 5]  },
+  { sym: 'c', val: '299,792,458', color: C.blue,  pos: [0, -5, 10] },
+];
+
+const constGroup = new THREE.Group();
+CONSTS.forEach(({ color, pos }) => {
+  const orb = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.6, 0),
+    new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.2, wireframe: false })
+  );
+  orb.position.set(...pos);
+  constGroup.add(orb);
+
+  // Glow ring around each constant
+  const glow = new THREE.Mesh(
+    new THREE.TorusGeometry(0.9, 0.04, 6, 30),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.4 })
+  );
+  glow.position.set(...pos);
+  constGroup.add(glow);
+});
+scene.add(constGroup);
+
+// ── 81 Evidence Nodes ─────────────────────────────────────────────────────────
+const NODE_LABELS = [
+  'Rohonc Codex','Bible Patterns','Serafinianus','GEB','Newton','Schrödinger','Cantor',
+  'Windows','DNA','Automata','Antikythera','Euler','Einstein','Berners-Lee','Wikipedia',
+  'Go/Google','Turing','Millennium Problems','Riemann','Concatenation','Matrices',
+  'Bloch Sphere','Pythagoras','Meta','Ollama','# Comments','# Hex','Darwin',
+  'Double Slit','Operators','Dürer','Lo Shu','Gauss','Copyright Headers','import math',
+  'HTML','C Language','Shannon/Pixels','Tensors','Nyman-Beurling','θ vs φ','Binet',
+  "Li's Criterion",'De Bruijn','Lorenz','Legendre','Birth Dates','Zeckendorf',
+  'Hilbert-Pólya','Vertex','Q Matrix','Unit Circle','SHA Circle','Imaginary i',
+  'Constants','Undefined','DNA Types','Shannon Entropy','Dirac','Boltzmann',
+  'Laplacian','Hilbert Space','Heisenberg','Gödel','The Matrix','Vectors',
+  'Schrödinger II','Wave Function','Time','Polyatomic Ions','Mountains/Python',
+  "Avogadro",'Fine Structure α','Max Born','Amazon Alexa','Hamiltonian',
+  'Minecraft','Lagrangian','(255,255,255)','(reserved)','Turtles'
+];
+
+const NODE_COLORS = [C.green,C.violet,C.green,C.amber,C.cyan,C.cyan,C.amber,C.blue,
+  C.blue,C.blue,C.blue,C.amber,C.cyan,C.blue,C.blue,C.blue,C.amber,C.amber,C.amber,
+  C.blue,C.amber,C.cyan,C.amber,C.blue,C.blue,C.blue,C.blue,C.cyan,C.cyan,C.amber,
+  C.amber,C.amber,C.amber,C.blue,C.blue,C.blue,C.blue,C.amber,C.cyan,C.amber,
+  C.amber,C.amber,C.amber,C.amber,C.cyan,C.amber,C.amber,C.amber,C.amber,C.amber,
+  C.amber,C.amber,C.blue,C.amber,C.amber,C.blue,C.cyan,C.amber,C.cyan,C.cyan,
+  C.amber,C.cyan,C.pink,C.amber,C.pink,C.cyan,C.pink,C.cyan,C.cyan,C.cyan,C.violet,
+  C.cyan,C.cyan,C.pink,C.cyan,C.cyan,C.blue,C.cyan,C.blue,C.pink,C.pink
+];
+
+const nodeGroup = new THREE.Group();
+const nodeObjects = [];
+const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+
+NODE_LABELS.forEach((label, i) => {
+  const t = i / NODE_LABELS.length;
+  const inclination = Math.acos(1 - 2 * t);
+  const azimuth = goldenAngle * i;
+  const R = 16 + Math.sin(i * 0.7) * 3;
+
+  const x = R * Math.sin(inclination) * Math.cos(azimuth);
+  const y = R * Math.sin(inclination) * Math.sin(azimuth);
+  const z = R * Math.cos(inclination);
+
+  const color = NODE_COLORS[i] || C.white;
+  const geo = new THREE.SphereGeometry(0.22, 8, 8);
+  const mat = new THREE.MeshStandardMaterial({
+    color, emissive: color, emissiveIntensity: 0.7
+  });
+  const node = new THREE.Mesh(geo, mat);
+  node.position.set(x, y, z);
+  node.userData = { label, index: i + 1, baseColor: color, basePos: new THREE.Vector3(x, y, z) };
+  nodeGroup.add(node);
+  nodeObjects.push(node);
+
+  // Connection line to center (sparse, only every 5th)
+  if (i % 5 === 0) {
+    const linePts = [new THREE.Vector3(0,0,0), new THREE.Vector3(x,y,z)];
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(linePts);
+    const lineMat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.06 });
+    nodeGroup.add(new THREE.Line(lineGeo, lineMat));
+  }
+});
+scene.add(nodeGroup);
+
+// ── Raycaster for hover ───────────────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let hoveredNode = null;
+const labelEl = document.getElementById('label');
+
+renderer.domElement.addEventListener('mousemove', (e) => {
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+});
+
+function checkHover() {
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(nodeObjects);
+  if (hits.length > 0) {
+    const obj = hits[0].object;
+    if (hoveredNode !== obj) {
+      if (hoveredNode) hoveredNode.scale.setScalar(1);
+      hoveredNode = obj;
+      hoveredNode.scale.setScalar(2.5);
+      labelEl.textContent = `#${obj.userData.index} — ${obj.userData.label}`;
+      labelEl.style.opacity = '1';
+    }
+  } else {
+    if (hoveredNode) { hoveredNode.scale.setScalar(1); hoveredNode = null; }
+    labelEl.style.opacity = '0';
+  }
+}
+
+// ── VR Support ────────────────────────────────────────────────────────────────
+window.start = async function(vr) {
+  document.getElementById('overlay').style.opacity = '0';
+  setTimeout(() => { document.getElementById('overlay').style.display = 'none'; }, 800);
+  document.getElementById('hud').classList.add('show');
+
+  if (vr) {
+    try {
+      const supported = await navigator.xr?.isSessionSupported('immersive-vr');
+      if (supported) {
+        const vrBtn = VRButton.createButton(renderer);
+        document.body.appendChild(vrBtn);
+        vrBtn.click(); // auto-enter VR
+      } else {
+        alert('WebXR not supported in this browser. Opening in desktop mode.');
+      }
+    } catch(e) {
+      alert('VR not available: ' + e.message);
+    }
+  }
+};
+
+// ── Scene Switcher ────────────────────────────────────────────────────────────
+let activeScene = 'all';
+window.setScene = function(s) {
+  activeScene = s;
+  document.querySelectorAll('.hud-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+
+  lorenzLine.visible = s === 'all' || s === 'lorenz';
+  chainGroup.visible = s === 'all' || s === 'chain';
+  dnaGroup.visible   = s === 'all' || s === 'dna';
+  constGroup.visible = s === 'all' || s === 'constants';
+  nodeGroup.visible  = s === 'all' || s === 'nodes';
+  core.visible = shell.visible = s === 'all';
+  rings.forEach(r => r.visible = s === 'all');
+};
+
+// ── Resize ────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ── Animation ─────────────────────────────────────────────────────────────────
+const clock = new THREE.Clock();
+
+function animate() {
+  const t = clock.getElapsedTime();
+
+  // Core pulse
+  const pulse = 1 + Math.sin(t * 2) * 0.08;
+  core.scale.setScalar(pulse);
+  shell.rotation.y = t * 0.3;
+  shell.rotation.x = t * 0.1;
+  coreMat.emissiveIntensity = 1.2 + Math.sin(t * 3) * 0.5;
+
+  // Rings
+  rings[0].rotation.z = t * 0.4;
+  rings[1].rotation.y = t * 0.3;
+  rings[2].rotation.x = t * 0.2;
+
+  // Lorenz slow rotation
+  lorenzLine.rotation.y = t * 0.08;
+
+  // Chain gentle bob
+  chainGroup.position.y = Math.sin(t * 0.5) * 0.5;
+  chainGroup.rotation.y = t * 0.05;
+
+  // DNA rotation
+  dnaGroup.rotation.y = t * 0.25;
+
+  // Constants orbit
+  constGroup.rotation.y = t * 0.06;
+  CONSTS.forEach(({ pos }, i) => {
+    const child = constGroup.children[i * 2];
+    const ring  = constGroup.children[i * 2 + 1];
+    if (child) {
+      child.rotation.x = t * (0.8 + i * 0.1);
+      child.rotation.z = t * (0.5 + i * 0.07);
+    }
+    if (ring) {
+      ring.rotation.z = t * (0.4 + i * 0.05);
+    }
+  });
+
+  // Nodes breathe + slow orbit
+  nodeGroup.rotation.y = t * 0.015;
+  nodeObjects.forEach((node, i) => {
+    const freq = 0.8 + i * 0.02;
+    const breathe = 0.9 + Math.sin(t * freq + i) * 0.12;
+    if (node !== hoveredNode) node.scale.setScalar(breathe);
+    node.material.emissiveIntensity = 0.4 + Math.sin(t * freq + i) * 0.3;
+  });
+
+  // Pulsing lights
+  pinkLight.intensity  = 5 + Math.sin(t * 1.7) * 2;
+  violetLight.intensity = 4 + Math.sin(t * 1.3) * 2;
+  blueLight.intensity  = 3 + Math.sin(t * 2.1) * 1;
+
+  checkHover();
+  controls.update();
+  renderer.render(scene, camera);
+}
+</script>
+</body>
+</html>
