@@ -6,6 +6,10 @@
 **Date:** February 21, 2026  
 **Classification:** Foundational Theory / Computational Philosophy / Mathematics
 
+**🌐 Live:**
+- [Evidence Explorer](https://blackroad-os.github.io/simulation-hypothesis/) — browse all 81 evidence items
+- [⬡ 3D / VR App](https://blackroad-os.github.io/simulation-hypothesis/vr.html) — open in Meta Quest or any browser
+
 ---
 
 ## Abstract
