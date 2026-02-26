@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulation Hypothesis — Fractal Explorer</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff1d6c">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; overflow: hidden; font-family: monospace; }
+  canvas { display: block; position: fixed; top: 0; left: 0; }
+  #overlay {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.94);
+    color: #fff; z-index: 10;
+    text-align: center; padding: 2rem;
+    transition: opacity 0.8s;
+  }
+  #overlay h1 { font-size: clamp(1.4rem,4vw,2.4rem); letter-spacing:.1em; color:#ff1d6c; margin-bottom:.5rem; }
+  #overlay p { color:#7878a0; font-size:.85rem; max-width:500px; line-height:1.7; margin-bottom:1.5rem; }
+  #overlay code { color:#f5a623; }
+  .btn { background:none; border:1px solid #ff1d6c; color:#ff1d6c; padding:.8rem 2rem;
+    font-family:monospace; font-size:.9rem; letter-spacing:.1em; cursor:pointer;
+    border-radius:4px; transition:all .2s; margin:.3rem; }
+  .btn:hover { background:rgba(255,29,108,.15); }
+  #hud {
+    position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%);
+    display:flex; gap:.4rem; z-index:5; opacity:0;
+    transition:opacity .5s; pointer-events:none; flex-wrap:wrap; justify-content:center;
+  }
+  #hud.show { opacity:1; pointer-events:all; }
+  .hud-btn {
+    background:rgba(0,0,0,.8); border:1px solid #333; color:#888;
+    padding:.4rem .8rem; font-family:monospace; font-size:.72rem;
+    cursor:pointer; border-radius:20px; transition:all .15s; white-space:nowrap;
+    text-decoration:none; display:inline-block;
+  }
+  .hud-btn:hover, .hud-btn.active { border-color:#ff1d6c; color:#ff1d6c; }
+  .hud-btn.nav { border-color:#444; color:#555; }
+  .hud-btn.nav:hover { border-color:#9c27b0; color:#9c27b0; }
+  #info {
+    position:fixed; top:1.5rem; left:50%; transform:translateX(-50%);
+    background:rgba(0,0,0,.85); border:1px solid #ff1d6c;
+    color:#ff1d6c; font-family:monospace; font-size:.75rem;
+    padding:.4rem 1.2rem; border-radius:20px; z-index:5;
+    opacity:0; transition:opacity .4s; letter-spacing:.06em;
+    pointer-events:none; max-width:90vw; text-align:center;
+  }
+  #info.show { opacity:1; }
+  #hint {
+    position:fixed; top:4.5rem; left:50%; transform:translateX(-50%);
+    color:#2a2a3a; font-size:.68rem; z-index:5;
+    letter-spacing:.05em; pointer-events:none;
+    opacity:0; transition:opacity 1s; white-space:nowrap;
+  }
+  #hint.show { opacity:1; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="overlay">
+  <h1>∞ FRACTAL EXPLORER</h1>
+  <p>
+    Infinite complexity from the simple rule <code>z → z² + c</code><br>
+    Self-similar patterns at every scale of magnification.<br>
+    The simulation generating itself recursively — evidence item <code>#10</code>.
+  </p>
+  <button class="btn" id="btn-start">EXPLORE →</button>
+  <p style="margin-top:1.5rem">
+    <a href="index.html" style="color:#333;font-size:.7rem;text-decoration:none">← Evidence Explorer</a>
+    &nbsp;&nbsp;&nbsp;
+    <a href="vr.html" style="color:#333;font-size:.7rem;text-decoration:none">⬡ 3D / VR →</a>
+  </p>
+</div>
+
+<div id="hud">
+  <button class="hud-btn active" id="m0" onclick="setMode(0,this)">MANDELBROT</button>
+  <button class="hud-btn" id="m1" onclick="setMode(1,this)">JULIA</button>
+  <button class="hud-btn" id="m2" onclick="setMode(2,this)">BURNING SHIP</button>
+  <button class="hud-btn" id="m3" onclick="setMode(3,this)">NEWTON</button>
+  <button class="hud-btn" id="m4" onclick="setMode(4,this)">TRICORN</button>
+  <button class="hud-btn" onclick="cycleJulia()">↻ JULIA PRESET</button>
+  <button class="hud-btn" onclick="resetView()">⌂ RESET</button>
+  <a class="hud-btn nav" href="vr.html">⬡ 3D/VR</a>
+  <a class="hud-btn nav" href="index.html">← INDEX</a>
+</div>
+
+<div id="info"></div>
+<div id="hint">scroll to zoom · drag to pan · double-click to zoom in</div>
+
+<script>
+// ═══════════════════════════════════════════════════════ SETUP ══════
+const canvas = document.getElementById('c');
+const infoEl = document.getElementById('info');
+const hintEl = document.getElementById('hint');
+
+let gl, prog, progNewton, posBuffer, W, H;
+
+// View state
+let mode = 0; // 0=mandelbrot, 1=julia, 2=burning ship, 3=newton, 4=tricorn
+let cx = -0.5, cy = 0.0, zoom = 1.0;
+
+const JULIA_PRESETS = [
+  [-0.7269,  0.1889, "Douady rabbit"],
+  [-0.8,     0.156,  "Dendrite"],
+  [-0.4,     0.6,    "San Marco"],
+  [ 0.285,   0.01,   "Spiral galaxy"],
+  [-0.70176,-0.3842, "Feather"],
+  [ 0.0,     0.8,    "Celtic spiral"],
+  [-0.1,     0.651,  "Curl"],
+  [-0.54,    0.54,   "Symmetry"],
+  [ 0.37,   -0.1,    "Airplane"],
+  [-1.25,    0.0,    "Dendrite II"],
+];
+let juliaIdx = 0;
+let juliaC = [JULIA_PRESETS[0][0], JULIA_PRESETS[0][1]];
+
+const MODE_DEFAULTS = [
+  { cx: -0.5,   cy:  0.0,    zoom: 0.85, label: "MANDELBROT" },
+  { cx:  0.0,   cy:  0.0,    zoom: 1.1,  label: "JULIA SET" },
+  { cx: -1.75,  cy: -0.04,   zoom: 2.5,  label: "BURNING SHIP" },
+  { cx:  0.0,   cy:  0.0,    zoom: 1.2,  label: "NEWTON  z³−1=0" },
+  { cx: -0.5,   cy:  0.0,    zoom: 0.85, label: "TRICORN" },
+];
+
+// Drag state
+let isDragging = false, dragX, dragY, dragCx, dragCy;
+
+// ═══════════════════════════════════════════════════════ SHADERS ══════
+const VS = `
+attribute vec2 a_pos;
+void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }
+`;
+
+// Mandelbrot (0), Julia (1), Burning Ship (2), Tricorn (4)
+const FS_MAIN = `
+precision highp float;
+uniform vec2 u_res;
+uniform vec2 u_center;
+uniform float u_zoom;
+uniform int u_mode;
+uniform vec2 u_julia_c;
+
+vec3 palette(float t) {
+  // Cyclic gradient: dark → pink → violet → cyan → dark (site theme)
+  vec3 c0 = vec3(0.039, 0.039, 0.059); // #0a0a0f  dark bg
+  vec3 c1 = vec3(1.00,  0.11,  0.42);  // #ff1d6c  pink
+  vec3 c2 = vec3(0.61,  0.15,  0.69);  // #9c27b0  violet
+  vec3 c3 = vec3(0.00,  0.74,  0.83);  // #00bcd4  cyan
+  vec3 col = mix(c0, c1, smoothstep(0.00, 0.30, t));
+  col = mix(col, c2, smoothstep(0.30, 0.60, t));
+  col = mix(col, c3, smoothstep(0.60, 0.80, t));
+  col = mix(col, c0, smoothstep(0.80, 1.00, t));
+  return col;
+}
+
+void main() {
+  vec2 p = (gl_FragCoord.xy - u_res * 0.5) / (u_zoom * u_res.y * 0.5);
+  p += u_center;
+
+  vec2 z = (u_mode == 1) ? p : vec2(0.0);
+  vec2 c = (u_mode == 1) ? u_julia_c : p;
+
+  const int MAX = 300;
+  float iter = 0.0;
+
+  for (int i = 0; i < MAX; i++) {
+    if (dot(z, z) > 256.0) break;
+    float zx = z.x, zy = z.y;
+    if (u_mode == 2) {
+      z = vec2(zx*zx - zy*zy + c.x, 2.0*abs(zx)*abs(zy) + c.y);
+    } else if (u_mode == 4) {
+      z = vec2(zx*zx - zy*zy + c.x, -2.0*zx*zy + c.y);
+    } else {
+      z = vec2(zx*zx - zy*zy + c.x, 2.0*zx*zy + c.y);
+    }
+    iter += 1.0;
+  }
+
+  float maxF = float(MAX);
+  if (iter >= maxF) {
+    gl_FragColor = vec4(0.039, 0.039, 0.059, 1.0);
+    return;
+  }
+
+  float logz = 0.5 * log(dot(z, z));
+  float nu = log(logz / log(2.0)) / log(2.0);
+  float smooth_i = iter + 1.0 - nu;
+
+  // Cyclic banding: cycle every 32 iterations → beautiful color rings
+  vec3 col = palette(fract(smooth_i / 32.0));
+  gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+// Newton fractal: z³ − 1 = 0 (roots at 1, e^(2πi/3), e^(−2πi/3))
+const FS_NEWTON = `
+precision highp float;
+uniform vec2 u_res;
+uniform vec2 u_center;
+uniform float u_zoom;
+
+vec2 cmul(vec2 a, vec2 b) {
+  return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x);
+}
+vec2 cdiv(vec2 a, vec2 b) {
+  const float EPSILON = 1e-10;
+  float d = max(dot(b,b), EPSILON);
+  return vec2((a.x*b.x + a.y*b.y)/d, (a.y*b.x - a.x*b.y)/d);
+}
+
+void main() {
+  vec2 p = (gl_FragCoord.xy - u_res * 0.5) / (u_zoom * u_res.y * 0.5);
+  p += u_center;
+  vec2 z = p;
+
+  const vec2 r0 = vec2( 1.0,       0.0);
+  const vec2 r1 = vec2(-0.5,       0.86602540378);
+  const vec2 r2 = vec2(-0.5,      -0.86602540378);
+
+  const int MAX = 60;
+  const float CONVERGENCE_EPS = 0.0001;
+  float iter = 0.0;
+  int root = 0;
+
+  for (int i = 0; i < MAX; i++) {
+    vec2 z2 = cmul(z, z);
+    vec2 f  = cmul(z2, z) - vec2(1.0, 0.0);
+    vec2 df = 3.0 * z2;
+    z = z - cdiv(f, df);
+    iter += 1.0;
+    if (dot(z - r0, z - r0) < CONVERGENCE_EPS) { root = 1; break; }
+    if (dot(z - r1, z - r1) < CONVERGENCE_EPS) { root = 2; break; }
+    if (dot(z - r2, z - r2) < CONVERGENCE_EPS) { root = 3; break; }
+  }
+
+  float bright = 1.0 - iter / float(MAX) * 0.88;
+  vec3 col;
+  if      (root == 1) col = vec3(1.00, 0.11, 0.42) * bright;
+  else if (root == 2) col = vec3(0.61, 0.15, 0.69) * bright;
+  else if (root == 3) col = vec3(0.00, 0.74, 0.83) * bright;
+  else                col = vec3(0.039, 0.039, 0.059);
+
+  gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+// ═══════════════════════════════════════════════════════ WEBGL ══════
+function mkShader(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    console.error('Shader compile error:', gl.getShaderInfoLog(s));
+    return null;
+  }
+  return s;
+}
+
+function mkProg(vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, mkShader(gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, mkShader(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+    console.error('Program link error:', gl.getProgramInfoLog(p));
+    return null;
+  }
+  return p;
+}
+
+function initGL() {
+  gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  if (!gl) { alert('WebGL is not supported in this browser.'); return; }
+
+  prog       = mkProg(VS, FS_MAIN);
+  progNewton = mkProg(VS, FS_NEWTON);
+
+  posBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER,
+    new Float32Array([-1,-1, 1,-1, -1,1, 1,1]),
+    gl.STATIC_DRAW);
+}
+
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  if (gl) gl.viewport(0, 0, W, H);
+}
+
+function render() {
+  if (!gl) return;
+  const p = (mode === 3) ? progNewton : prog;
+  gl.useProgram(p);
+
+  const posLoc = gl.getAttribLocation(p, 'a_pos');
+  gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+  gl.enableVertexAttribArray(posLoc);
+  gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+  gl.uniform2f(gl.getUniformLocation(p, 'u_res'),    W, H);
+  gl.uniform2f(gl.getUniformLocation(p, 'u_center'), cx, cy);
+  gl.uniform1f(gl.getUniformLocation(p, 'u_zoom'),   zoom);
+
+  if (mode !== 3) {
+    gl.uniform1i(gl.getUniformLocation(p, 'u_mode'),    mode);
+    gl.uniform2f(gl.getUniformLocation(p, 'u_julia_c'), juliaC[0], juliaC[1]);
+  }
+
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  updateInfo();
+}
+
+// ═══════════════════════════════════════════════════════ UI ══════
+function updateInfo() {
+  const d = MODE_DEFAULTS[mode];
+  let t = d.label + '  (' + cx.toFixed(6) + ', ' + cy.toFixed(6) + ')  ×' + zoom.toFixed(2);
+  if (mode === 1) t += '  c=(' + juliaC[0].toFixed(4) + ', ' + juliaC[1].toFixed(4) + ')  ' + JULIA_PRESETS[juliaIdx][2];
+  infoEl.textContent = t;
+}
+
+function setMode(m, btn) {
+  mode = m;
+  const d = MODE_DEFAULTS[m];
+  cx = d.cx; cy = d.cy; zoom = d.zoom;
+  document.querySelectorAll('.hud-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  render();
+}
+
+function cycleJulia() {
+  juliaIdx = (juliaIdx + 1) % JULIA_PRESETS.length;
+  juliaC = [JULIA_PRESETS[juliaIdx][0], JULIA_PRESETS[juliaIdx][1]];
+  if (mode !== 1) setMode(1, document.getElementById('m1'));
+  else render();
+}
+
+function resetView() {
+  const d = MODE_DEFAULTS[mode];
+  cx = d.cx; cy = d.cy; zoom = d.zoom;
+  render();
+}
+
+// ═══════════════════════════════════════════════════════ INTERACTION ══════
+function screenToWorld(sx, sy) {
+  return [
+    (sx - W / 2) / (zoom * H / 2) + cx,
+    (H - sy - H / 2) / (zoom * H / 2) + cy,
+  ];
+}
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY > 0 ? 0.85 : 1.15;
+  const [mx, my] = screenToWorld(e.clientX, e.clientY);
+  cx = mx + (cx - mx) / factor;
+  cy = my + (cy - my) / factor;
+  zoom *= factor;
+  render();
+}, { passive: false });
+
+canvas.addEventListener('mousedown', e => {
+  isDragging = true;
+  dragX = e.clientX; dragY = e.clientY;
+  dragCx = cx; dragCy = cy;
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  cx = dragCx - (e.clientX - dragX) / (zoom * H / 2);
+  cy = dragCy + (e.clientY - dragY) / (zoom * H / 2);
+  render();
+});
+
+canvas.addEventListener('mouseup',    () => { isDragging = false; });
+canvas.addEventListener('mouseleave', () => { isDragging = false; });
+
+canvas.addEventListener('dblclick', e => {
+  if (mode === 1) {
+    const [mx, my] = screenToWorld(e.clientX, e.clientY);
+    juliaC = [mx, my];
+    render();
+  } else {
+    const [mx, my] = screenToWorld(e.clientX, e.clientY);
+    cx = mx; cy = my;
+    zoom *= 3;
+    render();
+  }
+});
+
+// Touch
+let lastPinchDist = 0;
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    isDragging = true;
+    dragX = e.touches[0].clientX; dragY = e.touches[0].clientY;
+    dragCx = cx; dragCy = cy;
+  } else if (e.touches.length === 2) {
+    isDragging = false;
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    lastPinchDist = Math.hypot(dx, dy);
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (e.touches.length === 1 && isDragging) {
+    cx = dragCx - (e.touches[0].clientX - dragX) / (zoom * H / 2);
+    cy = dragCy + (e.touches[0].clientY - dragY) / (zoom * H / 2);
+    render();
+  } else if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.hypot(dx, dy);
+    zoom *= dist / lastPinchDist;
+    lastPinchDist = dist;
+    render();
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => { isDragging = false; });
+
+// Keyboard
+window.addEventListener('keydown', e => {
+  if (e.key === '1') setMode(0, document.getElementById('m0'));
+  if (e.key === '2') setMode(1, document.getElementById('m1'));
+  if (e.key === '3') setMode(2, document.getElementById('m2'));
+  if (e.key === '4') setMode(3, document.getElementById('m3'));
+  if (e.key === '5') setMode(4, document.getElementById('m4'));
+  if (e.key === 'r' || e.key === 'R') resetView();
+  if (e.key === 'j' || e.key === 'J') cycleJulia();
+});
+
+// ═══════════════════════════════════════════════════════ START ══════
+function start() {
+  const ov = document.getElementById('overlay');
+  ov.style.opacity = '0';
+  setTimeout(() => { ov.style.display = 'none'; }, 800);
+  document.getElementById('hud').classList.add('show');
+  infoEl.classList.add('show');
+  hintEl.classList.add('show');
+  setTimeout(() => hintEl.classList.remove('show'), 6000);
+  setMode(0, document.getElementById('m0'));
+}
+
+document.getElementById('btn-start').addEventListener('click', start);
+
+initGL();
+resize();
+window.addEventListener('resize', () => { resize(); render(); });
+</script>
+</body>
+</html>
