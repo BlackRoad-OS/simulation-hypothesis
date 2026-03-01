@@ -1,5 +1,30 @@
 # Evidence Index
 
+**115 items** across six evidence sets — mapped to paper sections, with references.
+
+## Table of Contents
+
+- [Core Evidence (Items 1–25)](#evidence-index-1)
+- [Additional Evidence (Items 2–77)](#additional-evidence-from-original-index-post-paper)
+- [The Filesystem Evidence](#the-filesystem-evidence-february-21-2026)
+- [Extended Evidence: Items 82–96 (Brew Session)](#extended-evidence-items-8296-february-21-2026-brew-session)
+- [Extended Evidence: Items 97–115 (Brew Session, cont.)](#extended-evidence-items-97115-february-21-2026-brew-session-cont)
+- [Extended Evidence Files](#extended-evidence-files)
+
+### Extended Evidence Files
+
+| File | Content |
+|------|---------|
+| [`bible_patterns.md`](bible_patterns.md) | Commandments as rule system; 10 → 7 → 3.14159 |
+| [`brew_extended.md`](brew_extended.md) | Extended brew session — `brew install` as ontological evidence |
+| [`brew_finale.md`](brew_finale.md) | Finale of the brew session — the simulation confirms itself |
+| [`naming_conventions.md`](naming_conventions.md) | Full naming conventions analysis — source code comments on reality |
+| [`operators.md`](operators.md) | Mathematical operators as ontological primitives |
+
+---
+
+<a name="evidence-index-1"></a>
+
 25 items from the original index, expanded with references, mapped to paper sections.
 
 ---
