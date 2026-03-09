@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulation Hypothesis — Cellular Automata</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00e676">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0f; overflow: hidden; font-family: monospace; }
+  canvas { display: block; position: fixed; inset: 0; }
+  #overlay {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.94); color: #fff;
+    z-index: 10; text-align: center; padding: 2rem;
+    transition: opacity 0.8s;
+  }
+  #overlay h1 { font-size: clamp(1.4rem,4vw,2.4rem); letter-spacing:.1em; color:#00e676; margin-bottom:.5rem; }
+  #overlay p { color:#7878a0; font-size:.85rem; max-width:520px; line-height:1.7; margin-bottom:1.5rem; }
+  #overlay code { color:#f5a623; }
+  .btn { background:none; border:1px solid #00e676; color:#00e676; padding:.7rem 2rem;
+    font-family:monospace; font-size:.9rem; letter-spacing:.1em; cursor:pointer;
+    border-radius:4px; transition:all .2s; margin:.3rem; }
+  .btn:hover { background:rgba(0,230,118,.12); }
+  #hud {
+    position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%);
+    display:flex; gap:.4rem; z-index:5; opacity:0; transition:opacity .5s;
+    pointer-events:none; flex-wrap:wrap; justify-content:center;
+  }
+  #hud.show { opacity:1; pointer-events:all; }
+  .hud-btn {
+    background:rgba(0,0,0,.85); border:1px solid #333; color:#666;
+    padding:.4rem .8rem; font-family:monospace; font-size:.72rem;
+    cursor:pointer; border-radius:20px; transition:all .15s;
+    white-space:nowrap; text-decoration:none; display:inline-block;
+  }
+  .hud-btn:hover, .hud-btn.active { border-color:#00e676; color:#00e676; }
+  .hud-btn.nav { border-color:#2a2a3a; color:#444; }
+  .hud-btn.nav:hover { border-color:#9c27b0; color:#9c27b0; }
+  #info {
+    position:fixed; top:1.5rem; left:50%; transform:translateX(-50%);
+    background:rgba(0,0,0,.85); border:1px solid #00e676; color:#00e676;
+    font-family:monospace; font-size:.72rem; padding:.35rem 1.1rem;
+    border-radius:20px; z-index:5; opacity:0; transition:opacity .4s;
+    pointer-events:none; white-space:nowrap;
+  }
+  #info.show { opacity:1; }
+  #hint {
+    position:fixed; top:4.2rem; left:50%; transform:translateX(-50%);
+    color:#1a2a1a; font-size:.65rem; z-index:5; pointer-events:none;
+    opacity:0; transition:opacity 1s;
+  }
+  #hint.show { opacity:1; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="overlay">
+  <h1>⬡ CELLULAR AUTOMATA</h1>
+  <p>
+    Complex emergent behavior from a single simple rule applied to every cell.<br>
+    Conway's <code>B3/S23</code>. Rule 110 is Turing-complete.<br>
+    The universe may be a cellular automaton. Evidence item <code>#10</code>.
+  </p>
+  <button class="btn" onclick="startSim()">INITIALIZE →</button>
+  <p style="margin-top:1.5rem">
+    <a href="index.html" style="color:#333;font-size:.7rem;text-decoration:none">← Evidence Explorer</a>
+    &nbsp;&nbsp;
+    <a href="lorenz.html" style="color:#333;font-size:.7rem;text-decoration:none">⊷ Lorenz →</a>
+    &nbsp;&nbsp;
+    <a href="fractal.html" style="color:#333;font-size:.7rem;text-decoration:none">∞ Fractal →</a>
+  </p>
+</div>
+
+<div id="hud">
+  <button class="hud-btn" id="pause-btn" onclick="togglePause()">⏸ PAUSE</button>
+  <button class="hud-btn" onclick="stepOnce()">STEP</button>
+  <button class="hud-btn" onclick="randomize(0.3)">⚄ RANDOM</button>
+  <button class="hud-btn" onclick="loadGliderGun()">⊹ GLIDER GUN</button>
+  <button class="hud-btn" onclick="clearGrid()">⊗ CLEAR</button>
+  <button class="hud-btn active" id="glow-btn" onclick="toggleGlow()">✦ GLOW</button>
+  <button class="hud-btn active" id="r0" onclick="setRule(0,this)">LIFE</button>
+  <button class="hud-btn" id="r1" onclick="setRule(1,this)">HIGHLIFE</button>
+  <button class="hud-btn" id="r2" onclick="setRule(2,this)">SEEDS</button>
+  <button class="hud-btn" id="r3" onclick="setRule(3,this)">DAY&amp;NIGHT</button>
+  <button class="hud-btn" id="r4" onclick="setRule(4,this)">MAZE</button>
+  <a class="hud-btn nav" href="lorenz.html">⊷ LORENZ</a>
+  <a class="hud-btn nav" href="fractal.html">∞ FRACTAL</a>
+  <a class="hud-btn nav" href="index.html">← INDEX</a>
+</div>
+
+<div id="info"></div>
+<div id="hint">click or drag to draw · right-click to erase</div>
+
+<script>
+// ═══════════════════════════════════════════════════════ CONFIG ══════
+const CELL = 7;   // pixels per cell (including gap)
+const GAP  = 1;   // gap between cells
+
+// Rule definitions in Birth/Survival (B/S) notation
+const RULES = [
+  { name:'LIFE',      desc:'B3/S23',        B:[3],         S:[2,3]           },
+  { name:'HIGHLIFE',  desc:'B36/S23',       B:[3,6],       S:[2,3]           },
+  { name:'SEEDS',     desc:'B2/S',          B:[2],         S:[]              },
+  { name:'DAY&NIGHT', desc:'B3678/S34678',  B:[3,6,7,8],   S:[3,4,6,7,8]    },
+  { name:'MAZE',      desc:'B3/S12345',     B:[3],         S:[1,2,3,4,5]    },
+];
+
+// Gosper Glider Gun cells (relative offsets from top-left)
+const GLIDER_GUN_CELLS = [
+  [5,1],[5,2],[6,1],[6,2],
+  [5,11],[6,11],[7,11],[4,12],[3,13],[3,14],[8,12],[9,13],[9,14],
+  [6,15],[4,16],[5,17],[6,17],[7,17],[6,18],[8,16],
+  [3,21],[4,21],[5,21],[3,22],[4,22],[5,22],[2,23],[6,23],
+  [1,25],[2,25],[6,25],[7,25],
+  [3,35],[4,35],[3,36],[4,36],
+];
+
+// Cyclic color table: age → css color string (pink → violet → cyan)
+const COLOR_TABLE = (() => {
+  const t = [];
+  for (let a = 0; a < 256; a++) {
+    const f = (a % 90) / 90;
+    let r, g, b;
+    if (f < 0.5) {
+      const u = f * 2;
+      r = Math.round(255 - 99 * u);   // #ff1d6c → #9c27b0
+      g = Math.round(29  + 10  * u);
+      b = Math.round(108 + 68  * u);
+    } else {
+      const u = (f - 0.5) * 2;
+      r = Math.round(156 - 156 * u);  // #9c27b0 → #00bcd4
+      g = Math.round(39  + 149 * u);
+      b = Math.round(176 + 36  * u);
+    }
+    t.push(`rgb(${r},${g},${b})`);
+  }
+  return t;
+})();
+
+// ═══════════════════════════════════════════════════════ STATE ══════
+let W, H, cols, rows;
+let grid, nextGrid, ageGrid;
+let lookup = new Uint8Array(18);   // lookup[alive*9 + neighbors]
+let ruleIdx = 0;
+let running = false, paused = false, generation = 0;
+let drawing = false, erasing = false;
+
+const canvas  = document.getElementById('c');
+const ctx     = canvas.getContext('2d');
+const infoEl  = document.getElementById('info');
+const hintEl  = document.getElementById('hint');
+
+// ═══════════════════════════════════════════════════════ RULE ══════
+function buildLookup(B, S) {
+  lookup.fill(0);
+  for (let n = 0; n <= 8; n++) {
+    lookup[0 * 9 + n] = B.includes(n) ? 1 : 0;
+    lookup[1 * 9 + n] = S.includes(n) ? 1 : 0;
+  }
+}
+
+function setRule(idx, btn) {
+  ruleIdx = idx;
+  buildLookup(RULES[idx].B, RULES[idx].S);
+  document.querySelectorAll('.hud-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  clearGrid();
+  randomize(0.3);
+}
+
+// ═══════════════════════════════════════════════════════ GRID ══════
+function initGrid() {
+  grid     = new Uint8Array(cols * rows);
+  nextGrid = new Uint8Array(cols * rows);
+  ageGrid  = new Uint16Array(cols * rows);
+}
+
+function clearGrid() {
+  grid.fill(0);
+  nextGrid.fill(0);
+  ageGrid.fill(0);
+  generation = 0;
+  draw();
+}
+
+function randomize(density) {
+  for (let i = 0; i < grid.length; i++) {
+    grid[i]    = Math.random() < density ? 1 : 0;
+    ageGrid[i] = grid[i] ? Math.floor(Math.random() * 90) : 0;
+  }
+  generation = 0;
+  draw();
+}
+
+function loadGliderGun() {
+  clearGrid();
+  const ox = Math.floor(cols / 2) - 25;
+  const oy = Math.floor(rows / 2) - 10;
+  for (const [dy, dx] of GLIDER_GUN_CELLS) {
+    const r = oy + dy, c = ox + dx;
+    if (r >= 0 && r < rows && c >= 0 && c < cols) {
+      grid[r * cols + c]    = 1;
+      ageGrid[r * cols + c] = 1;
+    }
+  }
+  draw();
+}
+
+// ═══════════════════════════════════════════════════════ STEP ══════
+function step() {
+  let alive = 0;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      let n = 0;
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          n += grid[((r + dr + rows) % rows) * cols + ((c + dc + cols) % cols)];
+        }
+      }
+      const cur = grid[r * cols + c];
+      const nxt = lookup[cur * 9 + n];
+      nextGrid[r * cols + c] = nxt;
+      if (nxt) {
+        ageGrid[r * cols + c] = Math.min(ageGrid[r * cols + c] + 1, 65535);
+        alive++;
+      } else {
+        ageGrid[r * cols + c] = 0;
+      }
+    }
+  }
+  const tmp = grid; grid = nextGrid; nextGrid = tmp;
+  generation++;
+  return alive;
+}
+
+// ═══════════════════════════════════════════════════════ DRAW ══════
+function draw() {
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, W, H);
+
+  const cellSz = CELL - GAP;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (!grid[r * cols + c]) continue;
+
+      const age = ageGrid[r * cols + c];
+      const px  = c * CELL;
+      const py  = r * CELL;
+
+      // Glow pass: slightly larger, low alpha (skip when disabled for performance)
+      if (glowEnabled) {
+        ctx.globalAlpha = 0.12;
+        ctx.fillStyle   = COLOR_TABLE[age & 0xff];
+        ctx.fillRect(px - 2, py - 2, cellSz + 5, cellSz + 5);
+      }
+
+      // Crisp cell pass
+      ctx.globalAlpha = 1;
+      // Newly born cells flash white for first 2 generations
+      ctx.fillStyle = age <= 2 ? '#ffffff' : COLOR_TABLE[age & 0xff];
+      ctx.fillRect(px, py, cellSz, cellSz);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ═══════════════════════════════════════════════════════ ANIMATION ══════
+let lastAlive = 0;
+let glowEnabled = true;
+
+function loop() {
+  if (!running || paused) return;
+  const alive = step();
+  draw();
+  lastAlive = alive;
+  // Throttle DOM update to every 5 generations to reduce layout overhead
+  if (generation % 5 === 0) {
+    const rule = RULES[ruleIdx];
+    infoEl.textContent = `${rule.name}  ${rule.desc}  ·  gen=${generation}  ·  alive=${alive}`;
+  }
+  requestAnimationFrame(loop);
+}
+
+function stepOnce() {
+  if (!running) return;
+  const alive = step();
+  draw();
+  lastAlive = alive;
+  const rule = RULES[ruleIdx];
+  infoEl.textContent = `${rule.name}  ${rule.desc}  ·  gen=${generation}  ·  alive=${alive}`;
+}
+
+function togglePause() {
+  paused = !paused;
+  document.getElementById('pause-btn').textContent = paused ? '▶ RESUME' : '⏸ PAUSE';
+  if (!paused) loop();
+}
+
+function toggleGlow() {
+  glowEnabled = !glowEnabled;
+  const btn = document.getElementById('glow-btn');
+  btn.textContent = glowEnabled ? '✦ GLOW' : '✧ GLOW';
+  btn.classList.toggle('active', glowEnabled);
+}
+
+// ═══════════════════════════════════════════════════════ INTERACTION ══════
+function cellAt(clientX, clientY) {
+  const r = Math.floor(clientY / CELL);
+  const c = Math.floor(clientX / CELL);
+  return (r >= 0 && r < rows && c >= 0 && c < cols) ? [r, c] : null;
+}
+
+function paintCell(clientX, clientY, alive) {
+  const pos = cellAt(clientX, clientY);
+  if (!pos) return;
+  const [r, c] = pos;
+  const idx = r * cols + c;
+  grid[idx]    = alive;
+  ageGrid[idx] = alive ? 1 : 0;
+}
+
+canvas.addEventListener('mousedown', e => {
+  e.preventDefault();
+  erasing = e.button === 2;
+  drawing = true;
+  paintCell(e.clientX, e.clientY, erasing ? 0 : 1);
+  if (paused) draw();
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (!drawing) return;
+  paintCell(e.clientX, e.clientY, erasing ? 0 : 1);
+  if (paused) draw();
+});
+
+canvas.addEventListener('mouseup',    () => { drawing = erasing = false; });
+canvas.addEventListener('mouseleave', () => { drawing = erasing = false; });
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+// Touch support
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  drawing = true;
+  paintCell(e.touches[0].clientX, e.touches[0].clientY, 1);
+  if (paused) draw();
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!drawing) return;
+  paintCell(e.touches[0].clientX, e.touches[0].clientY, 1);
+  if (paused) draw();
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => { drawing = false; });
+
+// ═══════════════════════════════════════════════════════ START ══════
+function resize() {
+  W    = canvas.width  = window.innerWidth;
+  H    = canvas.height = window.innerHeight;
+  cols = Math.floor(W / CELL);
+  rows = Math.floor(H / CELL);
+  initGrid();
+  if (running) {
+    randomize(0.3);
+    loop();
+  }
+}
+
+function startSim() {
+  const ov = document.getElementById('overlay');
+  ov.style.opacity = '0';
+  setTimeout(() => { ov.style.display = 'none'; }, 800);
+  document.getElementById('hud').classList.add('show');
+  infoEl.classList.add('show');
+  hintEl.classList.add('show');
+  setTimeout(() => hintEl.classList.remove('show'), 6000);
+  running = true;
+  buildLookup(RULES[0].B, RULES[0].S);
+  randomize(0.3);
+  loop();
+}
+
+resize();
+window.addEventListener('resize', resize);
+</script>
+</body>
+</html>
