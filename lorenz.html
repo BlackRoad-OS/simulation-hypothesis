@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulation Hypothesis — Lorenz Attractor</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00bcd4">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0f; overflow: hidden; font-family: monospace; }
+  canvas { display: block; position: fixed; inset: 0; }
+  #overlay {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.94); color: #fff;
+    z-index: 10; text-align: center; padding: 2rem;
+    transition: opacity 0.8s;
+  }
+  #overlay h1 { font-size: clamp(1.4rem,4vw,2.4rem); letter-spacing:.1em; color:#00bcd4; margin-bottom:.5rem; }
+  #overlay p { color:#7878a0; font-size:.85rem; max-width:520px; line-height:1.7; margin-bottom:1.5rem; }
+  #overlay code { color:#f5a623; }
+  .btn { background:none; border:1px solid #00bcd4; color:#00bcd4; padding:.7rem 2rem;
+    font-family:monospace; font-size:.9rem; letter-spacing:.1em; cursor:pointer;
+    border-radius:4px; transition:all .2s; margin:.3rem; }
+  .btn:hover { background:rgba(0,188,212,.15); }
+  #hud {
+    position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%);
+    display:flex; gap:.4rem; z-index:5; opacity:0; transition:opacity .5s;
+    pointer-events:none; flex-wrap:wrap; justify-content:center;
+  }
+  #hud.show { opacity:1; pointer-events:all; }
+  .hud-btn {
+    background:rgba(0,0,0,.85); border:1px solid #333; color:#666;
+    padding:.4rem .8rem; font-family:monospace; font-size:.72rem;
+    cursor:pointer; border-radius:20px; transition:all .15s;
+    white-space:nowrap; text-decoration:none; display:inline-block;
+  }
+  .hud-btn:hover, .hud-btn.active { border-color:#00bcd4; color:#00bcd4; }
+  .hud-btn.nav { border-color:#2a2a3a; color:#444; }
+  .hud-btn.nav:hover { border-color:#9c27b0; color:#9c27b0; }
+  #info {
+    position:fixed; top:1.5rem; left:50%; transform:translateX(-50%);
+    background:rgba(0,0,0,.85); border:1px solid #00bcd4; color:#00bcd4;
+    font-family:monospace; font-size:.72rem; padding:.35rem 1.1rem;
+    border-radius:20px; z-index:5; opacity:0; transition:opacity .4s;
+    pointer-events:none; white-space:nowrap;
+  }
+  #info.show { opacity:1; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="overlay">
+  <h1>⊷ LORENZ ATTRACTOR</h1>
+  <p>
+    <code>dx/dt = σ(y−x) &nbsp; dy/dt = x(ρ−z)−y &nbsp; dz/dt = xy−βz</code><br><br>
+    Edward Lorenz, 1963. Three coupled equations. Deterministic chaos.<br>
+    Sensitive dependence on initial conditions — the butterfly effect.<br>
+    Evidence item <code>#45</code>.
+  </p>
+  <button class="btn" onclick="startAnim()">OBSERVE →</button>
+  <p style="margin-top:1.5rem">
+    <a href="index.html" style="color:#333;font-size:.7rem;text-decoration:none">← Evidence Explorer</a>
+    &nbsp;&nbsp;
+    <a href="fractal.html" style="color:#333;font-size:.7rem;text-decoration:none">∞ Fractal →</a>
+    &nbsp;&nbsp;
+    <a href="cellular.html" style="color:#333;font-size:.7rem;text-decoration:none">⬡ Cellular →</a>
+  </p>
+</div>
+
+<div id="hud">
+  <button class="hud-btn active" id="vxz" onclick="setView('xz',this)">BUTTERFLY x-z</button>
+  <button class="hud-btn" id="vrot" onclick="setView('rot',this)">3D ROTATE</button>
+  <button class="hud-btn" id="vxy" onclick="setView('xy',this)">TOP x-y</button>
+  <button class="hud-btn" id="vyz" onclick="setView('yz',this)">SIDE y-z</button>
+  <button class="hud-btn" id="pause-btn" onclick="togglePause()">⏸ PAUSE</button>
+  <button class="hud-btn" onclick="resetSim()">⌂ RESET</button>
+  <a class="hud-btn nav" href="cellular.html">⬡ CELLULAR</a>
+  <a class="hud-btn nav" href="fractal.html">∞ FRACTAL</a>
+  <a class="hud-btn nav" href="index.html">← INDEX</a>
+</div>
+
+<div id="info"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════ SETUP ══════
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+const infoEl = document.getElementById('info');
+
+// Lorenz parameters
+const SIGMA = 10, RHO = 28, BETA = 8 / 3;
+const DT    = 0.005;
+const STEPS = 6;       // integration steps per animation frame
+const N     = 12;      // simultaneous trajectories
+
+const COLORS = [
+  '#ff1d6c','#9c27b0','#00bcd4','#f5a623',
+  '#2979ff','#00e676','#ce93d8','#ff6090',
+  '#7c4dff','#18ffff','#ff4081','#4dd0e1',
+];
+
+let W, H;
+let particles = [];
+let view = 'xz', rotAngle = 0;
+let running = false, paused = false, frame = 0;
+
+// ═══════════════════════════════════════════════════════ PHYSICS ══════
+function initParticles() {
+  particles = Array.from({ length: N }, (_, i) => {
+    const t = (i / N) * Math.PI * 2;
+    return {
+      x: 0.1 + 0.04 * Math.cos(t),
+      y:        0.04 * Math.sin(t),
+      z: 20,
+      color: COLORS[i],
+    };
+  });
+}
+
+// 4th-order Runge-Kutta integration of Lorenz system
+function rk4(x, y, z) {
+  const f = (x, y, z) => [SIGMA*(y-x), x*(RHO-z)-y, x*y-BETA*z];
+  const [k1x,k1y,k1z] = f(x, y, z);
+  const [k2x,k2y,k2z] = f(x+DT/2*k1x, y+DT/2*k1y, z+DT/2*k1z);
+  const [k3x,k3y,k3z] = f(x+DT/2*k2x, y+DT/2*k2y, z+DT/2*k2z);
+  const [k4x,k4y,k4z] = f(x+DT*k3x,   y+DT*k3y,   z+DT*k3z);
+  return [
+    x + DT/6*(k1x+2*k2x+2*k3x+k4x),
+    y + DT/6*(k1y+2*k2y+2*k3y+k4y),
+    z + DT/6*(k1z+2*k2z+2*k3z+k4z),
+  ];
+}
+
+// ═══════════════════════════════════════════════════════ PROJECTION ══════
+function project(x, y, z) {
+  const s  = Math.min(W / 52, H / 60);
+  const cx = W / 2;
+  const cy = H * 0.52;
+  switch (view) {
+    case 'xz':  return [cx + x * s,              cy - (z - 25) * s];
+    case 'xy':  return [cx + x * s,              cy - y * s];
+    case 'yz':  return [cx + y * s,              cy - (z - 25) * s];
+    case 'rot': {
+      const rx = x * Math.cos(rotAngle) - y * Math.sin(rotAngle);
+      const ry = x * Math.sin(rotAngle) + y * Math.cos(rotAngle);
+      return [cx + rx * s, cy - (z - 25) * s + ry * s * 0.28];
+    }
+  }
+  return [cx, cy];
+}
+
+// ═══════════════════════════════════════════════════════ UI ══════
+function clearCanvas() {
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, W, H);
+}
+
+function setView(v, btn) {
+  view = v;
+  document.querySelectorAll('.hud-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  clearCanvas();
+  frame = 0;
+}
+
+function resetSim() {
+  initParticles();
+  clearCanvas();
+  frame    = 0;
+  rotAngle = 0;
+}
+
+function togglePause() {
+  paused = !paused;
+  document.getElementById('pause-btn').textContent = paused ? '▶ RESUME' : '⏸ PAUSE';
+  if (!paused) tick();
+}
+
+// ═══════════════════════════════════════════════════════ RENDER LOOP ══════
+function tick() {
+  if (!running || paused) return;
+
+  // Slowly dim trails — lower alpha = longer-lasting traces
+  ctx.fillStyle = 'rgba(10,10,15,0.018)';
+  ctx.fillRect(0, 0, W, H);
+
+  if (view === 'rot') rotAngle += 0.004;
+
+  // Draw trajectory segments for every particle
+  for (const p of particles) {
+    ctx.strokeStyle = p.color;
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    const [x0, y0] = project(p.x, p.y, p.z);
+    ctx.moveTo(x0, y0);
+    for (let s = 0; s < STEPS; s++) {
+      [p.x, p.y, p.z] = rk4(p.x, p.y, p.z);
+      const [nx, ny] = project(p.x, p.y, p.z);
+      ctx.lineTo(nx, ny);
+    }
+    ctx.stroke();
+  }
+
+  // Bright head dot for each particle
+  for (const p of particles) {
+    const [px, py] = project(p.x, p.y, p.z);
+    ctx.beginPath();
+    ctx.arc(px, py, 2.2, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+  }
+
+  frame++;
+  // Throttle DOM update to every 30 frames to reduce layout overhead
+  if (frame % 30 === 0) {
+    const t = (frame * STEPS * DT).toFixed(1);
+    infoEl.textContent = `σ=${SIGMA}  ρ=${RHO}  β=${BETA.toFixed(3)}  ·  t=${t}  ·  ${N} trajectories`;
+  }
+
+  requestAnimationFrame(tick);
+}
+
+function startAnim() {
+  const ov = document.getElementById('overlay');
+  ov.style.opacity = '0';
+  setTimeout(() => { ov.style.display = 'none'; }, 800);
+  document.getElementById('hud').classList.add('show');
+  infoEl.classList.add('show');
+  running = true;
+  tick();
+}
+
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  clearCanvas();
+}
+
+initParticles();
+resize();
+window.addEventListener('resize', () => { resize(); resetSim(); });
+</script>
+</body>
+</html>
